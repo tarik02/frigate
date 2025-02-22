@@ -43,6 +43,27 @@ def post_process_yolov9(predictions: np.ndarray, width, height) -> np.ndarray:
 
     return detections
 
+def post_process_dfine(class_ids: np.ndarray, boxes: np.ndarray, scores: np.ndarray, w: int, h: int) -> np.ndarray:
+    indices = np.argsort(scores)[::-1]
+
+    detections = np.zeros((20, 6), np.float32)
+
+    for i, (bbox, confidence, class_id) in enumerate(
+        zip(boxes[indices], scores[indices], class_ids[indices])
+    ):
+        if i == 20 or confidence < 0.4:
+            break
+
+        detections[i] = [
+            class_id,
+            confidence,
+            bbox[1]/h,
+            bbox[0]/w,
+            bbox[3]/h,
+            bbox[2]/w,
+        ]
+
+    return detections
 
 ### ONNX Utilities
 

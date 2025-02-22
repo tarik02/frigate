@@ -9,7 +9,7 @@ from frigate.detectors.detector_config import (
     BaseDetectorConfig,
     ModelTypeEnum,
 )
-from frigate.util.model import get_ort_providers, post_process_yolov9
+from frigate.util.model import get_ort_providers, post_process_yolov9, post_process_dfine
 
 logger = logging.getLogger(__name__)
 
@@ -55,10 +55,9 @@ class ONNXDetector(DetectionApi):
         logger.info(f"ONNX: {path} loaded")
 
     def detect_raw(self, tensor_input: np.ndarray):
-        model_input_name = self.model.get_inputs()[0].name
-        tensor_output = self.model.run(None, {model_input_name: tensor_input})
-
         if self.onnx_model_type == ModelTypeEnum.yolonas:
+            model_input_name = self.model.get_inputs()[0].name
+            tensor_output = self.model.run(None, {model_input_name: tensor_input})
             predictions = tensor_output[0]
 
             detections = np.zeros((20, 6), np.float32)
@@ -80,9 +79,19 @@ class ONNXDetector(DetectionApi):
                 ]
             return detections
         elif self.onnx_model_type == ModelTypeEnum.yolov9:
+            model_input_name = self.model.get_inputs()[0].name
+            tensor_output = self.model.run(None, {model_input_name: tensor_input})
             predictions: np.ndarray = tensor_output[0]
             return post_process_yolov9(predictions, self.w, self.h)
+        elif self.onnx_model_type == ModelTypeEnum.dFine:
+            tensor_output = self.model.run(None, {
+                "images": tensor_input,
+                "orig_target_sizes": np.array([[self.h, self.w]], dtype=np.int64),
+            })
+            class_ids, boxes, scores = tensor_output
+
+            return post_process_dfine(class_ids[0], boxes[0], scores[0], self.w, self.h)
         else:
             raise Exception(
-                f"{self.onnx_model_type} is currently not supported for rocm. See the docs for more info on supported models."
+                f"{self.onnx_model_type} is currently not supported for onnx. See the docs for more info on supported models."
             )
