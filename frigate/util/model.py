@@ -44,14 +44,14 @@ def post_process_yolov9(predictions: np.ndarray, width, height) -> np.ndarray:
     return detections
 
 def post_process_dfine(class_ids: np.ndarray, boxes: np.ndarray, scores: np.ndarray, w: int, h: int) -> np.ndarray:
-    indices = np.argsort(scores)[::-1]
+    indices = cv2.dnn.NMSBoxesBatched(boxes, scores, class_ids, score_threshold=0.4, nms_threshold=0.4)
 
     detections = np.zeros((20, 6), np.float32)
 
     for i, (bbox, confidence, class_id) in enumerate(
         zip(boxes[indices], scores[indices], class_ids[indices])
     ):
-        if i == 20 or confidence < 0.4:
+        if i == 20:
             break
 
         detections[i] = [
